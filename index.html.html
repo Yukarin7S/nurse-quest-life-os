@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nurse Quest Life OS</title>
+<style>
+:root{--p:#6d28d9;--ink:#172554;--muted:#64748b;--bg:#f5f3ff;--line:#e2e8f0}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;background:linear-gradient(#ede9fe,#f8fafc 360px);color:var(--ink);padding-bottom:30px}
+header,main{max-width:760px;margin:auto}header{padding:22px 16px 8px;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:24px;margin:2px 0}h1 span{color:var(--p)}small{color:var(--muted)}
+.card{background:#fff;border-radius:22px;padding:18px;margin:12px 14px;box-shadow:0 10px 30px #312e8112}
+.hero{background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#fff}.hero small{color:#e9d5ff}.hero h2{font-size:20px}
+.level{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}.bar{height:10px;background:#ffffff33;border-radius:10px;overflow:hidden}.bar i{display:block;height:100%;background:#fff;width:0}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 14px}.quick button,.small{border:0;border-radius:15px;background:#fff;padding:12px 6px;font-weight:800;color:var(--ink);box-shadow:0 6px 20px #312e8110}.quick span{display:block;font-size:24px}
+.section{display:flex;justify-content:space-between;align-items:center}.section h3{margin:0 0 12px}.small{background:#ede9fe;color:var(--p);padding:8px 11px}
+.list{display:grid;gap:8px}.item{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--line);border-radius:15px}.item.done{opacity:.5}.item.done .title{text-decoration:line-through}
+.check{width:26px;height:26px;border:2px solid #c4b5fd;border-radius:9px;background:#fff}.done .check{background:#16a34a;color:#fff}.grow{flex:1}.title{font-weight:800}.meta{font-size:12px;color:var(--muted);margin-top:4px}.delete{border:0;background:transparent;color:#94a3b8;font-size:18px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 14px}.stats .card{margin:0}.stats strong{display:block;font-size:23px;margin-top:5px}.empty{text-align:center;color:var(--muted)}
+dialog{border:0;border-radius:22px;padding:0;width:min(92vw,480px)}dialog::backdrop{background:#17255488}form{padding:20px;display:grid;gap:13px}.head{display:flex;justify-content:space-between}.head h3{margin:0}.head button{border:0;border-radius:50%;width:34px;height:34px}
+label{display:grid;gap:6px;font-weight:800;font-size:13px}input,select,textarea{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:12px;font:inherit}.primary{border:0;border-radius:13px;padding:13px;background:var(--p);color:#fff;font-weight:800}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#172554;color:#fff;padding:10px 15px;border-radius:12px;display:none}
+</style>
+</head>
+<body>
+<header><div><small id="today"></small><h1>Nurse Quest <span>Life OS</span></h1></div><button class="small" onclick="backup()">バックアップ</button></header>
+<main>
+<section class="card hero"><small>ゆかりん専属・生活管理</small><h2 id="message">今日は最低ラインだけでも100点。</h2><div class="level"><b>Lv.<span id="level">1</span></b><div class="bar"><i id="bar"></i></div><small><span id="exp">0</span> EXP</small></div></section>
+<section class="quick"><button onclick="show('mDlg')"><span>🎯</span>ミッション</button><button onclick="show('eDlg')"><span>💰</span>支出</button><button onclick="show('tDlg')"><span>📚</span>課題</button><button onclick="show('hDlg')"><span>❤️</span>体調</button></section>
+<section class="card"><div class="section"><h3>今日のミッション</h3><button class="small" onclick="autoPlan()">今日を自動作成</button></div><div id="missions" class="list"></div><p id="mEmpty" class="empty">まだありません。</p></section>
+<section class="stats"><article class="card"><small>今月の支出</small><strong id="month">¥0</strong></article><article class="card"><small>未完了の課題</small><strong id="tasksCount">0件</strong></article><article class="card"><small>今日の家事</small><strong id="chores">0件</strong></article><article class="card"><small>今日のHP</small><strong id="hp">80%</strong></article></section>
+<section class="card"><div class="section"><h3>今日の支出</h3><button class="small" onclick="show('eDlg')">追加</button></div><div id="expenses" class="list"></div><p id="eEmpty" class="empty">今日の支出はありません。</p></section>
+<section class="card"><div class="section"><h3>課題・勉強</h3><button class="small" onclick="show('tDlg')">追加</button></div><div id="tasks" class="list"></div><p id="tEmpty" class="empty">登録中の課題はありません。</p></section>
+</main>
+
+<dialog id="mDlg"><form method="dialog"><div class="head"><h3>ミッション追加</h3><button>×</button></div><label>種類<select id="mType"><option>勉強</option><option>家事</option><option>健康</option><option>食事</option><option>仕事</option><option>休息</option><option>生活</option></select></label><label>やること<input id="mTitle"></label><label>最低ライン<input id="mMin"></label><label>EXP<input id="mExp" type="number" value="10"></label><button type="button" class="primary" onclick="addMission()">追加</button></form></dialog>
+<dialog id="eDlg"><form method="dialog"><div class="head"><h3>支出入力</h3><button>×</button></div><label>日付<input id="eDate" type="date"></label><label>金額<input id="eAmount" type="number"></label><label>カテゴリ<select id="eCat"><option>食費</option><option>外食</option><option>日用品</option><option>交通</option><option>学校</option><option>娯楽</option><option>医療</option><option>美容</option><option>固定費</option><option>その他</option></select></label><label>内容・お店<input id="eTitle"></label><label>支払方法<select id="eMethod"><option>PayPay</option><option>現金</option><option>クレジット</option><option>交通系IC</option><option>口座振替</option><option>その他</option></select></label><button type="button" class="primary" onclick="addExpense()">保存</button></form></dialog>
+<dialog id="tDlg"><form method="dialog"><div class="head"><h3>課題追加</h3><button>×</button></div><label>科目<input id="tSubject"></label><label>課題・試験<input id="tTitle"></label><label>期限<input id="tDate" type="date"></label><label>目安時間<input id="tMinutes" type="number" value="30"></label><button type="button" class="primary" onclick="addTask()">追加</button></form></dialog>
+<dialog id="hDlg"><form method="dialog"><div class="head"><h3>体調入力</h3><button>×</button></div><label>HP<input id="hHp" type="number" min="0" max="100" value="80"></label><label>睡眠時間<input id="hSleep" type="number" step=".5"></label><label>体重<input id="hWeight" type="number" step=".1"></label><label>メモ<textarea id="hMemo"></textarea></label><button type="button" class="primary" onclick="addHealth()">保存</button></form></dialog>
+<div id="toast"></div>
+
+<script>
+const K='nq-life-local';let s=JSON.parse(localStorage.getItem(K)||'{"exp":0,"missions":[],"expenses":[],"tasks":[],"health":[]}');
+const id=()=>Date.now().toString(36)+Math.random().toString(36).slice(2), iso=()=>new Date().toLocaleDateString('sv-SE');
+const esc=x=>String(x||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const yen=n=>new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0}).format(n||0);
+function save(){localStorage.setItem(K,JSON.stringify(s));render()}function show(x){document.getElementById(x).showModal()}
+function toast(x){const t=document.getElementById('toast');t.textContent=x;t.style.display='block';setTimeout(()=>t.style.display='none',1500)}
+function addMission(){if(!mTitle.value.trim())return toast('内容を入れてね');s.missions.push({id:id(),type:mType.value,title:mTitle.value.trim(),min:mMin.value.trim(),exp:+mExp.value||10,done:false});mTitle.value='';mMin.value='';mDlg.close();save()}
+function toggleM(x){const m=s.missions.find(v=>v.id===x);m.done=!m.done;s.exp=Math.max(0,s.exp+(m.done?m.exp:-m.exp));save()}
+function delM(x){s.missions=s.missions.filter(v=>v.id!==x);save()}
+function addExpense(){if(!+eAmount.value)return toast('金額を入れてね');s.expenses.push({id:id(),date:eDate.value||iso(),amount:+eAmount.value,cat:eCat.value,title:eTitle.value.trim(),method:eMethod.value});eAmount.value='';eTitle.value='';eDlg.close();save()}
+function delE(x){s.expenses=s.expenses.filter(v=>v.id!==x);save()}
+function addTask(){if(!tTitle.value.trim())return toast('課題名を入れてね');s.tasks.push({id:id(),subject:tSubject.value.trim()||'未分類',title:tTitle.value.trim(),date:tDate.value||iso(),minutes:+tMinutes.value||30,done:false});tTitle.value='';tSubject.value='';tDlg.close();save()}
+function toggleT(x){const t=s.tasks.find(v=>v.id===x);t.done=!t.done;if(t.done)s.exp+=20;save()}function delT(x){s.tasks=s.tasks.filter(v=>v.id!==x);save()}
+function addHealth(){s.health.push({id:id(),date:iso(),hp:+hHp.value||80,sleep:+hSleep.value||null,weight:+hWeight.value||null,memo:hMemo.value.trim()});hDlg.close();save()}
+function autoPlan(){const h=(s.health.filter(x=>x.date===iso()).at(-1)||{}).hp??80;const add=(type,title,min,exp)=>{if(!s.missions.some(x=>!x.done&&x.title===title))s.missions.push({id:id(),type,title,min,exp,done:false})};const ot=s.tasks.filter(x=>!x.done).sort((a,b)=>a.date.localeCompare(b.date));if(ot[0])add('勉強',ot[0].subject+'を20分','教材を開くだけ',15);add('健康','水を飲む','コップ1杯',5);h>=60?add('家事','食器を3枚洗う','1枚だけ',10):add('休息','20分休む','横になるだけ',10);add('生活','明日の持ち物を確認','かばんを見るだけ',5);save()}
+function backup(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(s,null,2)],{type:'application/json'}));a.download='nurse-quest-backup-'+iso()+'.json';a.click()}
+function render(){today.textContent=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});level.textContent=Math.floor(s.exp/100)+1;exp.textContent=s.exp;bar.style.width=(s.exp%100)+'%';
+const ms=[...s.missions].sort((a,b)=>a.done-b.done);missions.innerHTML=ms.map(m=>`<div class="item ${m.done?'done':''}"><button class="check" onclick="toggleM('${m.id}')">${m.done?'✓':''}</button><div class="grow"><div class="title">${esc(m.title)}</div><div class="meta">${esc(m.type)}｜最低：${esc(m.min||'1分だけ')}｜+${m.exp}EXP</div></div><button class="delete" onclick="delM('${m.id}')">×</button></div>`).join('');mEmpty.hidden=ms.length;
+const es=s.expenses.filter(x=>x.date===iso()).reverse();expenses.innerHTML=es.map(x=>`<div class="item"><div class="grow"><div class="title">${esc(x.title||x.cat)}　${yen(x.amount)}</div><div class="meta">${esc(x.cat)}｜${esc(x.method)}｜${x.date}</div></div><button class="delete" onclick="delE('${x.id}')">×</button></div>`).join('');eEmpty.hidden=es.length;
+const ts=s.tasks.filter(x=>!x.done).sort((a,b)=>a.date.localeCompare(b.date));tasks.innerHTML=ts.map(t=>`<div class="item"><button class="check" onclick="toggleT('${t.id}')"></button><div class="grow"><div class="title">${esc(t.subject)}｜${esc(t.title)}</div><div class="meta">期限 ${t.date}｜${t.minutes}分</div></div><button class="delete" onclick="delT('${t.id}')">×</button></div>`).join('');tEmpty.hidden=ts.length;
+const ym=iso().slice(0,7);month.textContent=yen(s.expenses.filter(x=>x.date.startsWith(ym)).reduce((a,b)=>a+b.amount,0));tasksCount.textContent=ts.length+'件';chores.textContent=s.missions.filter(x=>x.type==='家事'&&!x.done).length+'件';const h=s.health.filter(x=>x.date===iso()).at(-1);hp.textContent=(h?.hp??80)+'%';message.textContent=(h?.hp??80)<50?'今日は休息優先。最低ラインだけで十分。':'今日は最低ラインだけでも100点。'}
+eDate.value=iso();tDate.value=iso();render();
+</script>
+</body></html>

@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nurse Quest Life OS</title>
+<style>
+:root{--p:#6d28d9;--ink:#172554;--muted:#64748b;--bg:#f5f3ff;--line:#e2e8f0}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;background:linear-gradient(#ede9fe,#f8fafc 360px);color:var(--ink);padding-bottom:30px}
+header,main{max-width:760px;margin:auto}header{padding:22px 16px 8px;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:24px;margin:2px 0}h1 span{color:var(--p)}small{color:var(--muted)}
+.card{background:#fff;border-radius:22px;padding:18px;margin:12px 14px;box-shadow:0 10px 30px #312e8112}
+.hero{background:linear-gradient(135deg,#4c1d95,#7c3aed);color:#fff}.hero small{color:#e9d5ff}.hero h2{font-size:20px}
+.level{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}.bar{height:10px;background:#ffffff33;border-radius:10px;overflow:hidden}.bar i{display:block;height:100%;background:#fff;width:0}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 14px}.quick button,.small{border:0;border-radius:15px;background:#fff;padding:12px 6px;font-weight:800;color:var(--ink);box-shadow:0 6px 20px #312e8110}.quick span{display:block;font-size:24px}
+.section{display:flex;justify-content:space-between;align-items:center}.section h3{margin:0 0 12px}.small{background:#ede9fe;color:var(--p);padding:8px 11px}
+.list{display:grid;gap:8px}.item{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--line);border-radius:15px}.item.done{opacity:.5}.item.done .title{text-decoration:line-through}
+.check{width:26px;height:26px;border:2px solid #c4b5fd;border-radius:9px;background:#fff}.done .check{background:#16a34a;color:#fff}.grow{flex:1}.title{font-weight:800}.meta{font-size:12px;color:var(--muted);margin-top:4px}.delete{border:0;background:transparent;color:#94a3b8;font-size:18px}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 14px}.stats .card{margin:0}.stats strong{display:block;font-size:23px;margin-top:5px}.empty{text-align:center;color:var(--muted)}
+dialog{border:0;border-radius:22px;padding:0;width:min(92vw,480px)}dialog::backdrop{background:#17255488}form{padding:20px;display:grid;gap:13px}.head{display:flex;justify-content:space-between}.head h3{margin:0}.head button{border:0;border-radius:50%;width:34px;height:34px}
+label{display:grid;gap:6px;font-weight:800;font-size:13px}input,select,textarea{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:12px;font:inherit}.primary{border:0;border-radius:13px;padding:13px;background:var(--p);color:#fff;font-weight:800}
+#toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);background:#172554;color:#fff;padding:10px 15px;border-radius:12px;display:none}
+.page{display:none}.page.active{display:block}
+.bottom-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(760px,100%);display:grid;grid-template-columns:1fr 1fr;background:#fff;border-top:1px solid var(--line);z-index:20}
+.bottom-nav button{border:0;background:#fff;padding:12px 6px;font-weight:800;color:var(--muted)}
+.bottom-nav button.active{color:var(--p)}
+.chart-wrap{height:250px;position:relative}.chart-wrap canvas{width:100%;height:100%}
+.record-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.record-grid .card{margin:0}
+body{padding-bottom:86px}
+.action-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.edit-btn,.delete-btn{border:0;border-radius:9px;padding:6px 9px;font-weight:800;cursor:pointer}
+.edit-btn{background:#ede9fe;color:#5b21b6}
+.delete-btn{background:#fee2e2;color:#b91c1c}
+.day-add{border:0;background:#ede9fe;color:#5b21b6;border-radius:9px;padding:6px 10px;font-weight:800;cursor:pointer}
+.backup-box{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.backup-box button{width:100%}
+@media(max-width:520px){.backup-box{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div><small id="today"></small><h1>Nurse Quest <span>Life OS</span></h1></div><button class="small" onclick="backup()">バックアップ</button></header>
+<main>
+<div id="homePage" class="page active">
+<section class="card hero"><small>ゆかりん専属・生活管理</small><h2 id="message">今日は最低ラインだけでも100点。</h2><div class="level"><b>Lv.<span id="level">1</span></b><div class="bar"><i id="bar"></i></div><small><span id="exp">0</span> EXP</small></div></section>
+<section class="quick"><button onclick="show('mDlg')"><span>🎯</span>ミッション</button><button onclick="show('eDlg')"><span>💰</span>支出</button><button onclick="show('tDlg')"><span>📚</span>課題</button><button onclick="openHealthDialog()"><span>❤️</span>体調</button><button onclick="generateMeals(true)"><span>🍚</span>ご飯</button><button onclick="editTodayWork()"><span>💼</span>バイト</button><button onclick="openClassDialog()"><span>🏫</span>授業</button><button onclick="openPlanDialog()"><span>🗓️</span>予定</button></section>
+
+
+
+<section class="card">
+  <div class="section"><h3>データ管理</h3></div>
+  <div class="backup-box">
+    <button class="small" onclick="exportBackup()">📤 バックアップ保存</button>
+    <button class="small" onclick="document.getElementById('backupFile').click()">📥 バックアップ復元</button>
+  </div>
+  <input id="backupFile" type="file" accept=".json,application/json" hidden onchange="importBackup(event)">
+  <p class="meta" style="margin-top:10px">予定・授業・バイト・課題・体重・睡眠などをまとめて保存／復元できます。</p>
+</section>
+
+<section class="card">
+  <div class="section"><h3>今日の予定</h3><button class="small" onclick="openPlanDialog()">追加</button></div>
+  <div id="planList" class="list"></div>
+  <p id="pEmpty" class="empty">今日の予定はありません。</p>
+</section>
+
+<section class="card">
+  <div class="section"><h3>今日の授業</h3><div style="display:flex;gap:6px"><button class="small" onclick="show('importDlg')">一括登録</button><button class="small" onclick="openClassDialog()">入力・変更</button></div></div>
+  <div id="classList" class="list"></div>
+  <p id="cEmpty" class="empty">今日は授業なし。</p>
+</section>
+
+<section class="card"><div class="section"><h3>今日のミッション</h3><button class="small" onclick="autoPlan()">今日を自動作成</button></div><div id="missions" class="list"></div><p id="mEmpty" class="empty">まだありません。</p></section>
+<section class="stats"><article class="card"><small>今月の支出</small><strong id="month">¥0</strong></article><article class="card"><small>未完了の課題</small><strong id="tasksCount">0件</strong></article><article class="card"><small>今日の家事</small><strong id="chores">0件</strong></article><article class="card"><small>今日のHP</small><strong id="hp">80%</strong></article></section>
+
+
+<section class="card">
+  <div class="section"><h3>今日のバイト</h3><button class="small" onclick="editTodayWork()">入力・変更</button></div>
+  <div id="workList" class="list"></div>
+  <p id="wEmpty" class="empty">今日はバイトなし。</p>
+</section>
+
+<section class="card">
+  <div class="section"><h3>今日のご飯</h3><button class="small" onclick="generateMeals(true)">別の献立</button></div>
+  <div id="mealList" class="list"></div>
+  <p class="empty" id="mealNote">毎日、その日の献立を自動で提案します。</p>
+</section>
+
+<section class="card"><div class="section"><h3>今日の支出</h3><button class="small" onclick="show('eDlg')">追加</button></div><div id="expenses" class="list"></div><p id="eEmpty" class="empty">今日の支出はありません。</p></section>
+<section class="card"><div class="section"><h3>課題・勉強</h3><button class="small" onclick="show('tDlg')">追加</button></div><div id="tasks" class="list"></div><p id="tEmpty" class="empty">登録中の課題はありません。</p></section>
+</main>
+
+
+
+
+<dialog id="pDlg"><form method="dialog">
+<div class="head"><h3>予定を登録</h3><button>×</button></div>
+<label>日付<input id="pDate" type="date"></label>
+<label>予定名<input id="pTitle" placeholder="病院、買い物、旅行など"></label>
+<label>開始時間<input id="pStart" type="time"></label>
+<label>終了時間<input id="pEnd" type="time"></label>
+<label>種類
+<select id="pType">
+<option value="private">個人予定</option>
+<option value="medical">病院</option>
+<option value="errand">買い物・用事</option>
+<option value="outing">遊び・外出</option>
+<option value="deadline">提出・締切</option>
+<option value="other">その他</option>
+</select></label>
+<label>場所<input id="pPlace" placeholder="場所"></label>
+<label>メモ<input id="pMemo" placeholder="持ち物・補足"></label>
+<button type="button" class="primary" onclick="addPlan()">保存</button>
+</form></dialog>
+
+<dialog id="importDlg"><form method="dialog">
+<div class="head"><h3>時間割を一括登録</h3><button>×</button></div>
+<p class="meta" style="line-height:1.6">
+1行につき1コマ。Excelやメモからそのまま貼り付けOK。<br>
+形式：日付［Tab］時限［Tab］科目［Tab］教室［Tab］メモ
+</p>
+<textarea id="scheduleImport" rows="12" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:10px" placeholder="2026-09-01	1	心理学	103	小テスト
+2026-09-01	2	微生物	103	
+2026-09-02	1	形態機能学Ⅰ	201	"></textarea>
+<button type="button" class="primary" onclick="importClasses()">まとめて登録</button>
+</form></dialog>
+
+<dialog id="cDlg"><form method="dialog">
+<div class="head"><h3>授業を登録</h3><button>×</button></div>
+<label>日付<input id="cDate" type="date"></label>
+<label>時限
+<select id="cPeriod">
+<option value="1">1限</option><option value="2">2限</option>
+<option value="3">3限</option><option value="4">4限</option>
+<option value="5">5限</option><option value="other">その他</option>
+</select></label>
+<label>科目名<input id="cSubject" placeholder="形態機能学Ⅰ"></label>
+<label>教室<input id="cRoom" placeholder="301教室"></label>
+<label>時間<input id="cTime" placeholder="9:00〜10:30"></label>
+<label>メモ<input id="cMemo" placeholder="持ち物・小テストなど"></label>
+<button type="button" class="primary" onclick="addClass()">保存</button>
+</form></dialog>
+
+<dialog id="mDlg"><form method="dialog"><div class="head"><h3>ミッション追加</h3><button>×</button></div><label>種類<select id="mType"><option>勉強</option><option>家事</option><option>健康</option><option>食事</option><option>仕事</option><option>休息</option><option>生活</option></select></label><label>やること<input id="mTitle"></label><label>最低ライン<input id="mMin"></label><label>EXP<input id="mExp" type="number" value="10"></label><button type="button" class="primary" onclick="addMission()">追加</button></form></dialog>
+<dialog id="eDlg"><form method="dialog"><div class="head"><h3>支出入力</h3><button>×</button></div><label>日付<input id="eDate" type="date"></label><label>金額<input id="eAmount" type="number"></label><label>カテゴリ<select id="eCat"><option>食費</option><option>外食</option><option>日用品</option><option>交通</option><option>学校</option><option>娯楽</option><option>医療</option><option>美容</option><option>固定費</option><option>その他</option></select></label><label>内容・お店<input id="eTitle"></label><label>支払方法<select id="eMethod"><option>PayPay</option><option>現金</option><option>クレジット</option><option>交通系IC</option><option>口座振替</option><option>その他</option></select></label><button type="button" class="primary" onclick="addExpense()">保存</button></form></dialog>
+<dialog id="tDlg"><form method="dialog"><div class="head"><h3>課題追加</h3><button>×</button></div><label>科目<input id="tSubject"></label><label>課題・試験<input id="tTitle"></label><label>期限<input id="tDate" type="date"></label><label>目安時間<input id="tMinutes" type="number" value="30"></label><button type="button" class="primary" onclick="addTask()">追加</button></form></dialog>
+
+<dialog id="wDlg"><form method="dialog">
+<div class="head"><h3>バイト入力</h3><button>×</button></div>
+<label>日付<input id="wDate" type="date"></label>
+<label>勤務先
+<select id="wPlace" onchange="presetWork()">
+<option value="ramen">🍜 ラーメン屋</option>
+<option value="board">🎲 ボードゲームカフェ</option>
+<option value="other">その他</option>
+</select></label>
+<label>開始時間<input id="wStart" type="time"></label>
+<label>終了時間<input id="wEnd" type="time"></label>
+<label>時給<input id="wWage" type="number" inputmode="numeric" placeholder="1200"></label>
+<label>メモ<input id="wMemo" placeholder="まかないあり、延長など"></label>
+<button type="button" class="primary" onclick="addWork()">保存</button>
+</form></dialog>
+
+<dialog id="hDlg"><form method="dialog"><div class="head"><h3>体調入力</h3><button>×</button></div><label>日付<input id="hDate" type="date"></label><label>HP<input id="hHp" type="number" min="0" max="100" value="80"></label><label>睡眠時間<input id="hSleep" type="number" step=".5"></label><label>体重<input id="hWeight" type="number" step=".1"></label><label>メモ<textarea id="hMemo"></textarea></label><button type="button" class="primary" onclick="addHealth()">保存</button></form></dialog>
+</div>
+<div id="recordsPage" class="page">
+<section class="card hero"><small>健康記録</small><h2>体重と睡眠の推移</h2><p style="margin-bottom:0">毎日の入力内容を自動でグラフ化します。</p></section>
+
+<section class="card">
+  <div class="section"><h3>記録を追加</h3><button class="small" onclick="openHealthDialog()">入力</button></div>
+  <div class="record-grid">
+    <article class="card"><small>最新の体重</small><strong id="latestWeight">未入力</strong></article>
+    <article class="card"><small>最新の睡眠</small><strong id="latestSleep">未入力</strong></article>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section"><h3>体重グラフ</h3><small>直近30件</small></div>
+  <div class="chart-wrap"><canvas id="weightChart"></canvas></div>
+  <p id="weightEmpty" class="empty">体重を入力すると表示されます。</p>
+</section>
+
+<section class="card">
+  <div class="section"><h3>睡眠時間グラフ</h3><small>直近30件</small></div>
+  <div class="chart-wrap"><canvas id="sleepChart"></canvas></div>
+  <p id="sleepEmpty" class="empty">睡眠時間を入力すると表示されます。</p>
+</section>
+
+<section class="card">
+  <div class="section"><h3>記録一覧</h3></div>
+  <div id="healthHistory" class="list"></div>
+  <p id="healthHistoryEmpty" class="empty">記録はまだありません。</p>
+</section>
+</div>
+
+<div id="weekPage" class="page">
+<section class="card hero">
+  <small>週間予定</small>
+  <h2 id="weekTitle">今週の予定</h2>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+    <button class="small" onclick="moveWeek(-7)">← 前の週</button>
+    <button class="small" onclick="goThisWeek()">今週</button>
+    <button class="small" onclick="moveWeek(7)">次の週 →</button>
+    <button class="small" onclick="openPlanDialog()">＋予定追加</button>
+  </div>
+</section>
+<section id="weekList"></section>
+</div>
+
+</main>
+
+<nav class="bottom-nav">
+<button id="homeNav" class="active" onclick="showPage('home')">🏠<br>ホーム</button>
+<button id="recordsNav" onclick="showPage('records')">📈<br>健康記録</button>
+<button id="weekNav" onclick="showPage('week')">🗓️<br>1週間</button>
+</nav>
+<div id="toast"></div>
+
+<script>
+const K='nq-life-local';let s=JSON.parse(localStorage.getItem(K)||'{"exp":0,"missions":[],"expenses":[],"tasks":[],"health":[],"meals":{},"work":[],"classes":[],"plans":[]}');
+const id=()=>Date.now().toString(36)+Math.random().toString(36).slice(2), iso=()=>new Date().toLocaleDateString('sv-SE');
+const esc=x=>String(x||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const yen=n=>new Intl.NumberFormat('ja-JP',{style:'currency',currency:'JPY',maximumFractionDigits:0}).format(n||0);
+function save(){localStorage.setItem(K,JSON.stringify(s));render()}function show(x){document.getElementById(x).showModal()}
+function toast(x){const t=document.getElementById('toast');t.textContent=x;t.style.display='block';setTimeout(()=>t.style.display='none',1500)}
+
+
+
+
+
+function importClasses(){
+ const raw=scheduleImport.value.trim();
+ if(!raw)return toast("時間割を貼り付けてね");
+ if(!s.classes)s.classes=[];
+ const lines=raw.split(/\r?\n/).filter(Boolean);
+ let count=0, errors=[];
+ lines.forEach((line,i)=>{
+   const cols=line.split(/\t|,/).map(x=>x.trim());
+   if(cols.length<3){errors.push(i+1);return}
+   let [date,period,subject,room="",memo=""]=cols;
+   date=date.replace(/\//g,"-");
+   if(/^\d{1,2}-\d{1,2}$/.test(date)) date=`2026-${date}`;
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!subject){errors.push(i+1);return}
+   period=String(period).replace(/限/g,"")||"other";
+   s.classes=s.classes.filter(x=>!(x.date===date&&x.period===period));
+   s.classes.push({id:id(),date,period,subject,room,time:"",memo});
+   count++;
+ });
+ if(!count)return toast("形式を確認してね");
+ importDlg.close();scheduleImport.value="";save();
+ toast(`${count}コマ登録したよ${errors.length?`（${errors.length}行は未登録）`:""}`);
+}
+
+function openClassDialog(period="1",xid="",presetDate=""){
+ const x=(s.classes||[]).find(v=>v.id===xid);
+ cDate.value=x?.date||presetDate||iso();cPeriod.value=x?.period||period;cSubject.value=x?.subject||"";cRoom.value=x?.room||"";cTime.value=x?.time||"";cMemo.value=x?.memo||"";
+ cDlg.dataset.edit=xid;show("cDlg");
+}
+function addClass(){
+ if(!cSubject.value.trim())return toast("科目名を入れてね");
+ if(!s.classes)s.classes=[];
+ const date=cDate.value||iso(), period=cPeriod.value, xid=cDlg.dataset.edit||"";
+ s.classes=s.classes.filter(x=>x.id!==xid && !(x.date===date&&x.period===period));
+ s.classes.push({id:xid||id(),date,period,subject:cSubject.value.trim(),room:cRoom.value.trim(),time:cTime.value.trim(),memo:cMemo.value.trim()});
+ cDlg.dataset.edit="";cDlg.close();save();renderWeek();toast("授業を保存したよ");
+}
+function delClass(xid){
+ const x=(s.classes||[]).find(v=>v.id===xid);
+ if(!confirm(`「${x?.subject||"この授業"}」を削除していい？`))return;
+ s.classes=(s.classes||[]).filter(v=>v.id!==xid);save();renderWeek()
+}
+function editClass(xid){openClassDialog("1",xid)}
+function renderClasses(){
+ const xs=(s.classes||[]).filter(x=>x.date===iso()).sort((a,b)=>String(a.period).localeCompare(String(b.period),undefined,{numeric:true}));
+ classList.innerHTML=xs.map(x=>`<div class="item">
+ <div class="grow">
+ <div class="title">${x.period==="other"?"授業":esc(x.period+"限")}｜${esc(x.subject)}</div>
+ <div class="meta">${x.time?esc(x.time)+"｜":""}${x.room?esc(x.room):"教室未登録"}${x.memo?`｜${esc(x.memo)}`:""}</div>
+ </div><div class="action-row"><button class="edit-btn" onclick="editClass('${x.id}')">編集</button><button class="delete-btn" onclick="delClass('${x.id}')">削除</button></div></div>`).join("");
+ cEmpty.hidden=xs.length>0;
+}
+
+
+function editWork(xid){
+ const x=(s.work||[]).find(v=>v.id===xid);if(!x)return;
+ wDate.value=x.date;wPlace.value=x.place;wStart.value=x.start;wEnd.value=x.end;wWage.value=x.wage||"";wMemo.value=x.memo||"";
+ wDlg.dataset.edit=xid;show("wDlg");
+}
+function deleteWork(xid){
+ const x=(s.work||[]).find(v=>v.id===xid);
+ if(!confirm("このバイト予定を削除していい？"))return;
+ s.work=(s.work||[]).filter(v=>v.id!==xid);save();renderWeek();
+}
+
+function presetWork(){
+ const v=wPlace.value;
+ if(v==="ramen"){
+   wStart.value="10:30";
+   wEnd.value="15:00";
+   wWage.value=1226;
+   wMemo.value="まかないあり";
+ }else if(v==="board"){
+   wStart.value="12:00";
+   wEnd.value="19:00";
+   wWage.value=1226;
+   wMemo.value="";
+ }
+}
+
+function calcHours(start,end){
+ if(!start||!end)return 0;
+ const [sh,sm]=start.split(":").map(Number),[eh,em]=end.split(":").map(Number);
+ let mins=(eh*60+em)-(sh*60+sm);if(mins<0)mins+=1440;
+ return Math.round(mins/6)/10;
+}
+function addWork(){
+ const date=wDate.value||iso(), start=wStart.value, end=wEnd.value, wage=+wWage.value||0, xid=wDlg.dataset.edit||"";
+ if(!start||!end)return toast("勤務時間を入れてね");
+ if(!s.work)s.work=[];
+ s.work=s.work.filter(x=>x.id!==xid);
+ s.work.push({id:xid||id(),date,place:wPlace.value,start,end,wage,memo:wMemo.value.trim()});
+ wDlg.dataset.edit="";wDlg.close();save();renderWeek();toast("バイトを保存したよ");
+}
+function delWork(x){s.work=s.work.filter(v=>v.id!==x);save()}
+function editTodayWork(){
+ const x=(s.work||[]).find(v=>v.date===iso());
+ if(x){
+   wDate.value=x.date;wPlace.value=x.place;wStart.value=x.start;wEnd.value=x.end;wWage.value=x.wage||"";wMemo.value=x.memo||"";
+ }else{
+   wDate.value=iso();wPlace.value="ramen";presetWork();
+ }
+ wDlg.dataset.edit=x?.id||"";show("wDlg");
+}
+function renderWork(){
+ const xs=(s.work||[]).filter(x=>x.date===iso());
+ workList.innerHTML=xs.map(x=>{
+   const h=calcHours(x.start,x.end), pay=x.wage?Math.round(h*x.wage):0;
+   return `<div class="item"><div class="grow"><div class="title">${esc(x.place==="ramen"?"🍜 ラーメン屋":x.place==="board"?"🎲 ボードゲームカフェ":x.place)}　${x.start}〜${x.end}</div><div class="meta">${h}時間${pay?`｜見込み ${yen(pay)}`:""}${x.memo?`｜${esc(x.memo)}`:""}</div></div><button class="delete" onclick="delWork('${x.id}')">×</button></div>`;
+ }).join("");
+ wEmpty.hidden=xs.length>0;
+}
+
+const mealPlans=[
+{b:"ヨーグルト＋バナナ＋カフェオレ",l:"ラーメン屋のまかない（麺少なめ＋野菜多め）",d:"豚しゃぶサラダ＋ご飯少なめ＋味噌汁"},
+{b:"チーズトースト＋飲むヨーグルト",l:"おにぎり＋サラダチキン＋スープ",d:"鶏むね肉の照り焼き＋温野菜＋ご飯"},
+{b:"ヨーグルト＋パン＋スープ",l:"ラーメン屋のまかない（汁は残す）",d:"豚肉とキャベツの味噌炒め＋わかめスープ"},
+{b:"バナナ＋カフェオレ＋チーズ",l:"うどん＋サラダ",d:"牛肉と玉ねぎの甘辛炒め＋ご飯少なめ＋味噌汁"},
+{b:"飲むヨーグルト＋ハッシュポテト",l:"サンドイッチ＋野菜スープ",d:"鶏肉と野菜のトマト煮＋パン"},
+{b:"チーズパン＋ヨーグルト",l:"ラーメン屋のまかない（チャーシューと野菜優先）",d:"豚しゃぶうどん＋たっぷり野菜"},
+{b:"ヨーグルト＋バナナ＋パン",l:"おにぎり2個＋具だくさんスープ",d:"鮭のホイル焼き＋ご飯＋味噌汁"},
+{b:"カフェオレ＋チーズトースト",l:"冷やしうどん＋サラダチキン",d:"鶏肉とキャベツの塩炒め＋スープ"},
+{b:"飲むヨーグルト＋バナナ",l:"ラーメン屋のまかない（麺少なめ）",d:"豚肉と玉ねぎの生姜焼き＋千切りキャベツ＋ご飯"},
+{b:"ヨーグルト＋パン＋果物",l:"パン＋スープ＋サラダチキン",d:"ミートソースパスタ＋サラダ＋スープ"},
+{b:"チーズトースト＋スープ",l:"うどん＋ゆでない卵料理なしのサラダ",d:"牛しゃぶサラダ＋ご飯少なめ＋味噌汁"},
+{b:"バナナ＋飲むヨーグルト",l:"ラーメン屋のまかない（ご飯追加なし）",d:"鶏肉のチーズ焼き＋温野菜＋スープ"}
+];
+function generateMeals(force=false){
+ const key=iso();
+ if(!s.meals)s.meals={};
+ if(!s.meals[key]||force){
+   let last=s.meals[key]?.i;
+   let i=Math.floor(Math.random()*mealPlans.length);
+   if(mealPlans.length>1&&i===last)i=(i+1)%mealPlans.length;
+   s.meals[key]={i,plan:mealPlans[i]};
+   localStorage.setItem(K,JSON.stringify(s));
+ }
+ renderMeals();
+ if(force)toast("今日の献立を変えたよ");
+}
+function renderMeals(){
+ const key=iso();if(!s.meals||!s.meals[key])generateMeals(false);
+ const p=s.meals[key].plan;
+ mealList.innerHTML=
+ `<div class="item"><div class="grow"><div class="title">朝</div><div class="meta">${esc(p.b)}</div></div></div>`+
+ `<div class="item"><div class="grow"><div class="title">昼</div><div class="meta">${esc(p.l)}</div></div></div>`+
+ `<div class="item"><div class="grow"><div class="title">夜</div><div class="meta">${esc(p.d)}</div></div></div>`;
+ mealNote.textContent="苦手：ゆで卵・納豆・卵かけご飯・サバ・豆腐バーは除外済み";
+}
+
+function addMission(){if(!mTitle.value.trim())return toast('内容を入れてね');s.missions.push({id:id(),type:mType.value,title:mTitle.value.trim(),min:mMin.value.trim(),exp:+mExp.value||10,done:false});mTitle.value='';mMin.value='';mDlg.close();save()}
+function toggleM(x){const m=s.missions.find(v=>v.id===x);m.done=!m.done;s.exp=Math.max(0,s.exp+(m.done?m.exp:-m.exp));save()}
+function delM(x){s.missions=s.missions.filter(v=>v.id!==x);save()}
+function addExpense(){if(!+eAmount.value)return toast('金額を入れてね');s.expenses.push({id:id(),date:eDate.value||iso(),amount:+eAmount.value,cat:eCat.value,title:eTitle.value.trim(),method:eMethod.value});eAmount.value='';eTitle.value='';eDlg.close();save()}
+function delE(x){s.expenses=s.expenses.filter(v=>v.id!==x);save()}
+function addTask(){if(!tTitle.value.trim())return toast('課題名を入れてね');s.tasks.push({id:id(),subject:tSubject.value.trim()||'未分類',title:tTitle.value.trim(),date:tDate.value||iso(),minutes:+tMinutes.value||30,done:false});tTitle.value='';tSubject.value='';tDlg.close();save()}
+function toggleT(x){const t=s.tasks.find(v=>v.id===x);t.done=!t.done;if(t.done)s.exp+=20;save()}function delT(x){s.tasks=s.tasks.filter(v=>v.id!==x);save()}
+
+
+
+function exportBackup(){
+ const payload={
+   app:"Nurse Quest Life OS",
+   version:2,
+   exportedAt:new Date().toISOString(),
+   data:s
+ };
+ const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+ const a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download=`nurse-quest-backup-${iso()}.json`;
+ document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(a.href),500);
+ toast("バックアップを保存したよ");
+}
+function importBackup(event){
+ const file=event.target.files?.[0];
+ event.target.value="";
+ if(!file)return;
+ const reader=new FileReader();
+ reader.onload=()=>{
+   try{
+     const parsed=JSON.parse(reader.result);
+     const next=parsed?.data||parsed;
+     if(!next||typeof next!=="object")throw new Error("invalid");
+     if(!confirm("現在のデータをバックアップ内容で置き換えます。復元していい？"))return;
+     s={
+       missions:Array.isArray(next.missions)?next.missions:[],
+       tasks:Array.isArray(next.tasks)?next.tasks:[],
+       expenses:Array.isArray(next.expenses)?next.expenses:[],
+       health:Array.isArray(next.health)?next.health:[],
+       meals:next.meals&&typeof next.meals==="object"?next.meals:{},
+       work:Array.isArray(next.work)?next.work:[],
+       classes:Array.isArray(next.classes)?next.classes:[],
+       plans:Array.isArray(next.plans)?next.plans:[]
+     };
+     localStorage.setItem(KEY,JSON.stringify(s));
+     render();renderWeek();renderHealthPage();
+     toast("バックアップを復元したよ");
+   }catch(e){
+     alert("バックアップファイルを読み込めませんでした。JSONファイルを確認してね。");
+   }
+ };
+ reader.readAsText(file);
+}
+
+let weekBase=new Date();
+function typeLabel(t){
+ return ({private:"個人予定",medical:"病院",errand:"買い物・用事",outing:"遊び・外出",deadline:"提出・締切",other:"その他"})[t]||"予定";
+}
+function openPlanDialog(xid="",presetDate=""){
+ const x=(s.plans||[]).find(v=>v.id===xid);
+ pDate.value=x?.date||presetDate||iso();pTitle.value=x?.title||"";pStart.value=x?.start||"";pEnd.value=x?.end||"";
+ pType.value=x?.type||"private";pPlace.value=x?.place||"";pMemo.value=x?.memo||"";
+ pDlg.dataset.edit=xid;show("pDlg");
+}
+function addPlan(){
+ if(!pTitle.value.trim())return toast("予定名を入れてね");
+ if(!s.plans)s.plans=[];
+ const xid=pDlg.dataset.edit;
+ const obj={id:xid||id(),date:pDate.value||iso(),title:pTitle.value.trim(),start:pStart.value,end:pEnd.value,type:pType.value,place:pPlace.value.trim(),memo:pMemo.value.trim()};
+ s.plans=s.plans.filter(x=>x.id!==xid);s.plans.push(obj);
+ pDlg.close();pDlg.dataset.edit="";save();renderWeek();toast("予定を保存したよ");
+}
+function delPlan(xid){
+ const x=(s.plans||[]).find(v=>v.id===xid);
+ if(!confirm(`「${x?.title||"この予定"}」を削除していい？`))return;
+ s.plans=(s.plans||[]).filter(x=>x.id!==xid);save();renderWeek()
+}
+function renderPlans(){
+ const xs=(s.plans||[]).filter(x=>x.date===iso()).sort((a,b)=>(a.start||"99:99").localeCompare(b.start||"99:99"));
+ planList.innerHTML=xs.map(x=>`<div class="item"><div class="grow">
+ <div class="title">${x.start?esc(x.start)+"｜":""}${esc(x.title)}</div>
+ <div class="meta">${typeLabel(x.type)}${x.place?`｜${esc(x.place)}`:""}${x.memo?`｜${esc(x.memo)}`:""}</div>
+ </div><div class="action-row"><button class="edit-btn" onclick="openPlanDialog('${x.id}')">編集</button><button class="delete-btn" onclick="delPlan('${x.id}')">削除</button></div></div>`).join("");
+ pEmpty.hidden=xs.length>0;
+}
+function mondayOf(d){
+ const x=new Date(d);x.setHours(0,0,0,0);const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return x;
+}
+function localISO(d){
+ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");
+ return `${y}-${m}-${day}`;
+}
+function moveWeek(days){weekBase.setDate(weekBase.getDate()+days);renderWeek()}
+function goThisWeek(){weekBase=new Date();renderWeek()}
+function renderWeek(){
+ if(!document.getElementById("weekPage"))return;
+ const start=mondayOf(weekBase), end=new Date(start);end.setDate(start.getDate()+6);
+ weekTitle.textContent=`${start.getMonth()+1}/${start.getDate()}〜${end.getMonth()+1}/${end.getDate()}`;
+ const days=["月","火","水","木","金","土","日"];
+ let out="";
+ for(let i=0;i<7;i++){
+   const d=new Date(start);d.setDate(start.getDate()+i);const date=localISO(d);
+   let items=[];
+   (s.classes||[]).filter(x=>x.date===date).forEach(x=>items.push({kind:"class",id:x.id,time:x.period==="other"?"":`${x.period}限`,title:`🏫 ${x.subject}`,meta:[x.room,x.memo].filter(Boolean).join("｜")}));
+   (s.work||[]).filter(x=>x.date===date).forEach(x=>items.push({kind:"work",id:x.id,time:x.start||"",title:x.place==="ramen"?"🍜 ラーメン屋":x.place==="board"?"🎲 ボドゲームカフェ":"💼 バイト",meta:`${x.start||""}〜${x.end||""}`}));
+   (s.plans||[]).filter(x=>x.date===date).forEach(x=>items.push({kind:"plan",id:x.id,time:x.start||"",title:`🗓️ ${x.title}`,meta:[typeLabel(x.type),x.place,x.memo].filter(Boolean).join("｜")}));
+   items.sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99",undefined,{numeric:true}));
+   out+=`<section class="card"><div class="section"><h3>${d.getMonth()+1}/${d.getDate()}（${days[i]}）</h3><button class="day-add" onclick="openPlanDialog(\'\',\'${date}\')">＋予定</button></div>`;
+   out+=items.length?items.map(x=>{
+ const edit=x.kind==="plan"?`openPlanDialog('${x.id}')`:x.kind==="class"?`editClass('${x.id}')`:`editWork('${x.id}')`;
+ const del=x.kind==="plan"?`delPlan('${x.id}')`:x.kind==="class"?`delClass('${x.id}')`:`deleteWork('${x.id}')`;
+ return `<div class="item"><div class="grow"><div class="title">${x.time?esc(x.time)+"｜":""}${esc(x.title)}</div><div class="meta">${esc(x.meta||"")}</div></div><div class="action-row"><button class="edit-btn" onclick="${edit}">編集</button><button class="delete-btn" onclick="${del}">削除</button></div></div>`;
+ }).join(""):`<p class="empty">予定なし</p>`;
+   out+=`</section>`;
+ }
+ weekList.innerHTML=out;
+}
+
+function showPage(name){
+ homePage.classList.toggle("active",name==="home");
+ recordsPage.classList.toggle("active",name==="records");
+ weekPage.classList.toggle("active",name==="week");
+ homeNav.classList.toggle("active",name==="home");
+ recordsNav.classList.toggle("active",name==="records");
+ weekNav.classList.toggle("active",name==="week");
+ if(name==="records") setTimeout(renderHealthPage,30);
+ if(name==="week") setTimeout(renderWeek,30);
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+function openHealthDialog(){
+ const todayRec=(s.health||[]).filter(x=>x.date===iso()).at(-1);
+ hDate.value=iso();
+ hHp.value=todayRec?.hp??80;
+ hSleep.value=todayRec?.sleep??"";
+ hWeight.value=todayRec?.weight??"";
+ hMemo.value=todayRec?.memo??"";
+ show("hDlg");
+}
+function deleteHealth(xid){s.health=(s.health||[]).filter(x=>x.id!==xid);save();renderHealthPage()}
+function drawLineChart(canvas, rows, key, suffix){
+ const rect=canvas.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+ canvas.width=Math.max(320,rect.width)*dpr;canvas.height=250*dpr;
+ const ctx=canvas.getContext("2d");ctx.scale(dpr,dpr);
+ const w=canvas.width/dpr,h=canvas.height/dpr,p={l:44,r:12,t:18,b:36};
+ ctx.clearRect(0,0,w,h);
+ if(rows.length<1)return;
+ const vals=rows.map(x=>Number(x[key])).filter(Number.isFinite);
+ let min=Math.min(...vals),max=Math.max(...vals);
+ if(min===max){min-=1;max+=1}
+ const pad=(max-min)*.15;min-=pad;max+=pad;
+ ctx.strokeStyle="#e2e8f0";ctx.lineWidth=1;ctx.fillStyle="#64748b";ctx.font="11px system-ui";
+ for(let i=0;i<5;i++){
+  const y=p.t+(h-p.t-p.b)*i/4, val=max-(max-min)*i/4;
+  ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(w-p.r,y);ctx.stroke();
+  ctx.fillText(val.toFixed(key==="weight"?1:1)+suffix,2,y+4);
+ }
+ const x=i=>rows.length===1?(p.l+w-p.r)/2:p.l+(w-p.l-p.r)*i/(rows.length-1);
+ const y=v=>p.t+(max-v)/(max-min)*(h-p.t-p.b);
+ ctx.strokeStyle="#6d28d9";ctx.lineWidth=3;ctx.lineJoin="round";ctx.lineCap="round";ctx.beginPath();
+ rows.forEach((r,i)=>{const px=x(i),py=y(Number(r[key]));i?ctx.lineTo(px,py):ctx.moveTo(px,py)});ctx.stroke();
+ ctx.fillStyle="#6d28d9";rows.forEach((r,i)=>{ctx.beginPath();ctx.arc(x(i),y(Number(r[key])),3.5,0,Math.PI*2);ctx.fill()});
+ const ticks=[0,Math.floor((rows.length-1)/2),rows.length-1].filter((v,i,a)=>a.indexOf(v)===i);
+ ctx.fillStyle="#64748b";ctx.textAlign="center";
+ ticks.forEach(i=>ctx.fillText(rows[i].date.slice(5).replace("-","/"),x(i),h-12));
+ ctx.textAlign="start";
+}
+function renderHealthPage(){
+ const all=[...(s.health||[])].sort((a,b)=>a.date.localeCompare(b.date));
+ const wr=all.filter(x=>x.weight!=null&&x.weight!=="").slice(-30);
+ const sr=all.filter(x=>x.sleep!=null&&x.sleep!=="").slice(-30);
+ latestWeight.textContent=wr.length?`${wr.at(-1).weight}kg`:"未入力";
+ latestSleep.textContent=sr.length?`${sr.at(-1).sleep}時間`:"未入力";
+ weightEmpty.hidden=wr.length>0;sleepEmpty.hidden=sr.length>0;
+ if(wr.length)drawLineChart(weightChart,wr,"weight","kg");
+ if(sr.length)drawLineChart(sleepChart,sr,"sleep","h");
+ const rev=[...all].reverse();
+ healthHistory.innerHTML=rev.map(x=>`<div class="item"><div class="grow"><div class="title">${x.date}</div><div class="meta">${x.weight!=null?`体重 ${x.weight}kg｜`:""}${x.sleep!=null?`睡眠 ${x.sleep}時間｜`:""}HP ${x.hp??80}%${x.memo?`｜${esc(x.memo)}`:""}</div></div><button class="delete" onclick="deleteHealth('${x.id}')">×</button></div>`).join("");
+ healthHistoryEmpty.hidden=rev.length>0;
+}
+
+function addHealth(){
+ const date=hDate.value||iso();
+ s.health=(s.health||[]).filter(x=>x.date!==date);
+ s.health.push({id:id(),date,hp:+hHp.value||80,sleep:hSleep.value===""?null:+hSleep.value,weight:hWeight.value===""?null:+hWeight.value,memo:hMemo.value.trim()});
+ hDlg.close();save();renderHealthPage();toast("健康記録を保存したよ")
+}
+function autoPlan(){const h=(s.health.filter(x=>x.date===iso()).at(-1)||{}).hp??80;const add=(type,title,min,exp)=>{if(!s.missions.some(x=>!x.done&&x.title===title))s.missions.push({id:id(),type,title,min,exp,done:false})};const ot=s.tasks.filter(x=>!x.done).sort((a,b)=>a.date.localeCompare(b.date));if(ot[0])add('勉強',ot[0].subject+'を20分','教材を開くだけ',15);add('健康','水を飲む','コップ1杯',5);h>=60?add('家事','食器を3枚洗う','1枚だけ',10):add('休息','20分休む','横になるだけ',10);add('生活','明日の持ち物を確認','かばんを見るだけ',5);save()}
+function backup(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(s,null,2)],{type:'application/json'}));a.download='nurse-quest-backup-'+iso()+'.json';a.click()}
+function render(){today.textContent=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});level.textContent=Math.floor(s.exp/100)+1;exp.textContent=s.exp;bar.style.width=(s.exp%100)+'%';
+const ms=[...s.missions].sort((a,b)=>a.done-b.done);missions.innerHTML=ms.map(m=>`<div class="item ${m.done?'done':''}"><button class="check" onclick="toggleM('${m.id}')">${m.done?'✓':''}</button><div class="grow"><div class="title">${esc(m.title)}</div><div class="meta">${esc(m.type)}｜最低：${esc(m.min||'1分だけ')}｜+${m.exp}EXP</div></div><button class="delete" onclick="delM('${m.id}')">×</button></div>`).join('');mEmpty.hidden=ms.length;
+const es=s.expenses.filter(x=>x.date===iso()).reverse();expenses.innerHTML=es.map(x=>`<div class="item"><div class="grow"><div class="title">${esc(x.title||x.cat)}　${yen(x.amount)}</div><div class="meta">${esc(x.cat)}｜${esc(x.method)}｜${x.date}</div></div><button class="delete" onclick="delE('${x.id}')">×</button></div>`).join('');eEmpty.hidden=es.length;
+const ts=s.tasks.filter(x=>!x.done).sort((a,b)=>a.date.localeCompare(b.date));tasks.innerHTML=ts.map(t=>`<div class="item"><button class="check" onclick="toggleT('${t.id}')"></button><div class="grow"><div class="title">${esc(t.subject)}｜${esc(t.title)}</div><div class="meta">期限 ${t.date}｜${t.minutes}分</div></div><button class="delete" onclick="delT('${t.id}')">×</button></div>`).join('');tEmpty.hidden=ts.length;
+const ym=iso().slice(0,7);month.textContent=yen(s.expenses.filter(x=>x.date.startsWith(ym)).reduce((a,b)=>a+b.amount,0));tasksCount.textContent=ts.length+'件';chores.textContent=s.missions.filter(x=>x.type==='家事'&&!x.done).length+'件';const h=s.health.filter(x=>x.date===iso()).at(-1);hp.textContent=(h?.hp??80)+'%';message.textContent=(h?.hp??80)<50?'今日は休息優先。最低ラインだけで十分。':'今日は最低ラインだけでも100点。';renderPlans();renderClasses();renderWork();renderMeals()}
+eDate.value=iso();tDate.value=iso();wDate.value=iso();cDate.value=iso();hDate.value=iso();pDate.value=iso();render();renderWeek();window.addEventListener('resize',()=>{if(recordsPage.classList.contains('active'))renderHealthPage()});
+</script>
+</body></html>
